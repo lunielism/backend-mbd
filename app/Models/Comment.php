@@ -2,21 +2,20 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Comment extends Model
+class comment extends Model
 {
-    protected $table = 'comment';
-
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'users_id');
-    }
+    use HasFactory;
+    protected $guarded = ['id'];
 
     public function movie()
     {
-        return $this->belongsTo(Movie::class, 'movie_id');
+        return $this->belongsTo(Movie::class);
     }
-
-    // ...
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

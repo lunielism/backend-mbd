@@ -2,21 +2,22 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Bookmark extends Model
 {
-    protected $table = 'bookmark';
+    use HasFactory;
 
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'users_id');
-    }
+    protected $guarded = ['id'];
 
     public function movie()
     {
-        return $this->belongsTo(Movie::class, 'movie_id');
+        return $this->belongsTo(Movie::class);
+    }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 
-    // ...
 }

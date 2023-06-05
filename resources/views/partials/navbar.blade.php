@@ -10,10 +10,13 @@
             <a class="nav-link active" aria-current="page" href="/">Home</a>
             </li>
             <li class="nav-item">
-            <a class="nav-link" href="movies">Movie List</a>
+            <a class="nav-link" href="about">About</a>
             </li>
             <li class="nav-item">
-            <a class="nav-link" href="genres">Genre</a>
+            <a class="nav-link" href="blog">Blog</a>
+            </li>
+            <li class="nav-item">
+            <a class="nav-link" href="categories">Categories</a>
             </li>
         </ul>
 

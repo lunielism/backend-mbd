@@ -8,10 +8,20 @@
   <form action="/register" method="post">
     @csrf
     <div class="form-floating">
-      <input type="text" name="nama" class="form-control @error('nama') is-invalid
-      @enderror" id="nama" placeholder="Nama" required value="{{ old('nama') }}">
-      <label for="nama">Nama</label>
-      @error('nama')
+      <input type="text" name="name" class="form-control @error('name') is-invalid
+      @enderror" id="name" placeholder="Name" required value="{{ old('name') }}">
+      <label for="name">Name</label>
+      @error('name')
+        <div class="invalid-feedback">
+            {{ $message }}
+        </div>
+       @enderror
+    </div>
+    <div class="form-floating">
+      <input type="text" name="username"  class="form-control @error('username') is-invalid
+      @enderror" id="username" placeholder="Username" required value="{{ old('username') }}">
+      <label for="username">Username</label>
+      @error('username')
         <div class="invalid-feedback">
             {{ $message }}
         </div>

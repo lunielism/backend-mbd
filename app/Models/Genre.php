@@ -2,19 +2,16 @@
 
 namespace App\Models;
 
-use App\Models\Movie;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Genre extends Model
 {
-    protected $table = 'genre';
-    protected $primaryKey = 'id';
-    public $timestamps = false;
+    use HasFactory;
+    protected $guarded = ['id'];
 
-    // Relationship
     public function movies()
     {
-        return $this->hasMany(Movie::class, 'genre_id');
+        return $this->hasMany(Movie::class);
     }
 }

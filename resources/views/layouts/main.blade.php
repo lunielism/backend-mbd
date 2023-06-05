@@ -8,7 +8,7 @@
 
     <link rel="stylesheet" href="css/style.css">
 
-    <title>Movie Streaming Service </title>
+    <title>Movie Streaming | {{ $title }}</title>
   </head>
   <body>
 
