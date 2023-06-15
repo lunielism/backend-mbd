@@ -1,146 +1,213 @@
--- 1. Procedure: Menampilkan detail film berdasarkan ID
+-- 1) Procedure: Menampilkan detail film berdasarkan ID
 CREATE OR REPLACE PROCEDURE GetMovieDetails(
     IN movie_id INT
 )
 AS $$
+DECLARE
+    movie_record movie%ROWTYPE;
 BEGIN
-    SELECT * FROM movie WHERE id = movie_id;
-END;
-$$ LANGUAGE plpgsql;
-
-
--- 2. Procedure: Menampilkan daftar film yang dirilis dalam rentang tahun tertentu
-CREATE OR REPLACE PROCEDURE GetMoviesByYearRange(
-    IN start_year INT,
-    IN end_year INT
-)
-AS $$
-BEGIN
-    SELECT * FROM movie WHERE tahun_rilis BETWEEN start_year AND end_year;
-END;
-$$ LANGUAGE plpgsql;
-
-
--- 3. Procedure: Menampilkan daftar film berdasarkan genre
-CREATE OR REPLACE PROCEDURE GetMoviesByGenre(
-    IN genre_name VARCHAR(50)
-)
-AS $$
-BEGIN
-    SELECT * FROM movie m INNER JOIN genre g ON m.genre_id = g.id WHERE g.nama = genre_name;
-END;
-$$ LANGUAGE plpgsql;
-
-
--- 4. Procedure: Menampilkan daftar film yang mendapat rating tertinggi
-CREATE OR REPLACE PROCEDURE GetTopRatedMovies(
-    OUT movie_count INT,
-    OUT avg_rating NUMERIC
-)
-AS $$
-BEGIN
-    SELECT COUNT(*) INTO movie_count FROM movie;
-    SELECT AVG(rating) INTO avg_rating FROM user_rating;
-END;
-$$ LANGUAGE plpgsql;
-
-
--- 5. Procedure: Menampilkan daftar film yang memiliki jumlah bookmark tertinggi
-CREATE OR REPLACE PROCEDURE GetPopularMoviesByBookmark(
-    OUT movie_count INT
-)
-AS $$
-BEGIN
-    SELECT COUNT(*) INTO movie_count FROM bookmark GROUP BY movie_id ORDER BY COUNT(*) DESC;
-END;
-$$ LANGUAGE plpgsql;
-
-
--- 6. Procedure: Menampilkan daftar film yang memiliki jumlah like tertinggi
-CREATE OR REPLACE PROCEDURE GetPopularMoviesByLike(
-    OUT movie_count INT
-)
-AS $$
-BEGIN
-    SELECT COUNT(*) INTO movie_count FROM likes WHERE like_status = 'like' GROUP BY movie_id ORDER BY COUNT(*) DESC;
-END;
-$$ LANGUAGE plpgsql;
-
-
--- 7. Procedure: Menampilkan daftar film yang memiliki jumlah dislike tertinggi
-CREATE OR REPLACE PROCEDURE GetPopularMoviesByDislike(
-    OUT movie_count INT
-)
-AS $$
-BEGIN
-    SELECT COUNT(*) INTO movie_count FROM likes WHERE like_status = 'dislike' GROUP BY movie_id ORDER BY COUNT(*) DESC;
-END;
-$$ LANGUAGE plpgsql;
-
-
--- 8. Procedure: Menampilkan daftar film yang memiliki jumlah komentar tertinggi
-CREATE OR REPLACE PROCEDURE GetPopularMoviesByComment(
-    OUT movie_count INT
-)
-AS $$
-BEGIN
-    SELECT COUNT(*) INTO movie_count FROM comment GROUP BY movie_id ORDER BY COUNT(*) DESC;
-END;
-$$ LANGUAGE plpgsql;
-
-
--- 9. Procedure: Menampilkan daftar film yang direkomendasikan berdasarkan rating dan jumlah rating
-CREATE OR REPLACE PROCEDURE GetRecommendedMovies(
-    IN min_rating NUMERIC,
-    IN min_rating_count INT
-)
-AS $$
-BEGIN
-    SELECT * FROM movie WHERE id IN (
-        SELECT movie_id FROM user_rating 
-        GROUP BY movie_id 
-        HAVING AVG(rating) >= min_rating AND COUNT(*) >= min_rating_count
-    );
-END;
-$$ LANGUAGE plpgsql;
-
-
--- 10. Procedure: Menampilkan daftar film berdasarkan kata kunci pencarian
-CREATE OR REPLACE PROCEDURE SearchMovies(
-    IN keyword VARCHAR(100)
-)
-AS $$
-BEGIN
-    SELECT * FROM movie WHERE nama ILIKE '%' || keyword || '%' OR deskripsi ILIKE '%' || keyword || '%';
+    SELECT * INTO movie_record FROM movie WHERE id = movie_id;
+    
+    IF FOUND THEN
+        RAISE NOTICE 'Movie Details: %', movie_record;
+    ELSE
+        RAISE NOTICE 'Movie not found with ID: %', movie_id;
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Pemanggilan prosedur GetMovieDetails
 CALL GetMovieDetails(1);
 
--- Pemanggilan prosedur GetMoviesByYearRange
-CALL GetMoviesByYearRange(2000, 2020);
+--2) Procedure: Menampilkan daftar film yang dirilis dalam rentang tanggal tertentu
+CREATE OR REPLACE PROCEDURE GetMoviesByYearRange(
+    IN start_year DATE,
+    IN end_year DATE
+)
+AS $$
+DECLARE
+    movie_record movie%ROWTYPE;
+BEGIN
+    FOR movie_record IN SELECT * FROM movie WHERE tahun_rilis BETWEEN start_year AND end_year LOOP
+        RAISE NOTICE 'Movie: %', movie_record;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
 
--- Pemanggilan prosedur GetMoviesByGenre
+CALL GetMoviesByYearRange(DATE '2000-01-01', DATE '2022-12-31');
+
+-- 3) Procedure: Menampilkan daftar film berdasarkan genre
+CREATE OR REPLACE PROCEDURE GetMoviesByGenre(
+    IN genre_name VARCHAR(50)
+)
+AS $$
+DECLARE
+    movie_title movie.nama%TYPE;
+BEGIN
+    FOR movie_title IN
+        SELECT m.nama
+        FROM movie m
+        INNER JOIN genre g ON m.genre_id = g.id
+        WHERE g.nama = genre_name
+    LOOP
+        RAISE NOTICE 'Judul Film: %', movie_title;
+    END LOOP;
+
+    IF NOT FOUND THEN
+        RAISE NOTICE 'Tidak ada film dengan genre %', genre_name;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
 CALL GetMoviesByGenre('Action');
 
--- Pemanggilan prosedur GetTopRatedMovies
-CALL GetTopRatedMovies(OUT movie_count, OUT avg_rating);
 
--- Pemanggilan prosedur GetPopularMoviesByBookmark
-CALL GetPopularMoviesByBookmark(OUT movie_count);
+--  4) Procedure: Menampilkan daftar film yang mendapat rating tertinggi
+CREATE OR REPLACE PROCEDURE GetTopRatedMovies()
+AS $$
+DECLARE
+    movie_name movie.nama%TYPE;
+    movie_rating user_rating.rating%TYPE;
+BEGIN
+    SELECT m.nama, u.rating
+    INTO movie_name, movie_rating
+    FROM movie m
+    INNER JOIN user_rating u ON m.id = u.movie_id
+    WHERE u.rating = (SELECT MAX(rating) FROM user_rating)
+    ORDER BY u.rating DESC;
 
--- Pemanggilan prosedur GetPopularMoviesByLike
-CALL GetPopularMoviesByLike(OUT movie_count);
+    RAISE NOTICE 'Movie dengan rating tertinggi: % dengan rating: %', movie_name, movie_rating;
+END;
+$$ LANGUAGE plpgsql;
 
--- Pemanggilan prosedur GetPopularMoviesByDislike
-CALL GetPopularMoviesByDislike(OUT movie_count);
+CALL GetTopRatedMovies();
 
--- Pemanggilan prosedur GetPopularMoviesByComment
-CALL GetPopularMoviesByComment(OUT movie_count);
+-- 5) Procedure: Menampilkan daftar film yang memiliki jumlah bookmark tertinggi
+CREATE OR REPLACE PROCEDURE GetPopularMoviesByBookmark()
+AS $$
+DECLARE
+    movie_name movie.nama%TYPE;
+    bookmark_count INT;
+BEGIN
+    SELECT m.nama, COUNT(b.movie_id)
+    INTO movie_name, bookmark_count
+    FROM movie m
+    INNER JOIN bookmark b ON m.id = b.movie_id
+    GROUP BY m.nama
+    ORDER BY COUNT(b.movie_id) DESC
+    LIMIT 1;
 
--- Pemanggilan prosedur GetRecommendedMovies
-CALL GetRecommendedMovies(4.0, 10);
+    RAISE NOTICE 'Film dengan jumlah bookmark tertinggi: % dengan jumlah bookmark: %', movie_name, bookmark_count;
+END;
+$$ LANGUAGE plpgsql;
 
--- Pemanggilan prosedur SearchMovies
-CALL SearchMovies('action');
+-- Contoh pemanggilan prosedur
+CALL GetPopularMoviesByBookmark();
+
+
+-- 6) Procedure: Menampilkan daftar film yang memiliki jumlah like tertinggi
+CREATE OR REPLACE PROCEDURE GetPopularMoviesByLikes()
+AS $$
+DECLARE
+    movie_name movie.nama%TYPE;
+    like_count INT;
+BEGIN
+    SELECT m.nama, COUNT(l.movie_id)
+    INTO movie_name, like_count
+    FROM movie m
+    INNER JOIN likes l ON m.id = l.movie_id
+    GROUP BY m.nama
+    ORDER BY COUNT(l.movie_id) DESC
+    LIMIT 1;
+
+    RAISE NOTICE 'Film dengan jumlah like tertinggi: % dengan jumlah like: %', movie_name, like_count;
+END;
+$$ LANGUAGE plpgsql;
+
+CALL GetPopularMoviesByLikes();
+
+
+-- 7) Procedure: Menampilkan daftar film yang memiliki jumlah komentar tertinggi
+CREATE OR REPLACE PROCEDURE GetMoviesByHighestCommentCount()
+AS $$
+DECLARE
+    movie_name movie.nama%TYPE;
+    comment_count INT;
+BEGIN
+    SELECT m.nama, COUNT(c.movie_id)
+    INTO movie_name, comment_count
+    FROM movie m
+    INNER JOIN comment c ON m.id = c.movie_id
+    GROUP BY m.nama
+    ORDER BY COUNT(c.movie_id) DESC
+    LIMIT 1;
+
+    RAISE NOTICE 'Film dengan jumlah komentar tertinggi: % dengan jumlah komentar: %', movie_name, comment_count;
+END;
+$$ LANGUAGE plpgsql;
+
+CALL GetMoviesByHighestCommentCount();
+
+-- 8) Procedure: Menampilkan daftar film yang direkomendasikan berdasarkan rating dan jumlah rating
+--Prosedur ini akan mencari film-film yang memiliki setidaknya 3 rating,
+--kemudian akan mengurutkannya berdasarkan rating rata-rata tertinggi dan jumlah rating tertinggi, 
+--serta membatasi hasilnya hingga 5 film teratas.
+
+CREATE OR REPLACE PROCEDURE GetRecommendedMoviesByRatingAndCount()
+AS $$
+DECLARE
+    movie_name movie.nama%TYPE;
+    avg_rating FLOAT;
+    rating_count INT;
+    movie_cursor CURSOR FOR
+        SELECT m.nama, AVG(ur.rating), COUNT(ur.rating)
+        FROM movie m
+        INNER JOIN user_rating ur ON m.id = ur.movie_id
+        GROUP BY m.nama
+        HAVING COUNT(ur.rating) >= 3 -- Ambil film dengan setidaknya 3 rating
+        ORDER BY AVG(ur.rating) DESC, COUNT(ur.rating) DESC
+        LIMIT 5; -- Ambil 5 film teratas
+BEGIN
+    RAISE NOTICE 'Daftar film yang direkomendasikan:';
+    RAISE NOTICE '-----------------------------------';
+    
+    OPEN movie_cursor;
+    LOOP
+        FETCH movie_cursor INTO movie_name, avg_rating, rating_count;
+        EXIT WHEN NOT FOUND;
+        
+        RAISE NOTICE 'Film: %, Rating Rata-rata: %, Jumlah Rating: %', movie_name, avg_rating, rating_count;
+    END LOOP;
+    
+    CLOSE movie_cursor;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CALL GetRecommendedMoviesByRatingAndCount();
+
+--9) Procedure: Menampilkan daftar film berdasarkan kata kunci pencarian
+CREATE OR REPLACE PROCEDURE SearchMoviesByKeyword(
+    IN search_keyword VARCHAR(100)
+)
+AS $$
+DECLARE
+    movie_name movie.nama%TYPE;
+BEGIN
+    RAISE NOTICE 'Hasil Pencarian Film untuk Kata Kunci: %', search_keyword;
+    RAISE NOTICE '---------------------------------------';
+
+    FOR movie_name IN
+        SELECT nama
+        FROM movie
+        WHERE LOWER(nama) LIKE '%' || LOWER(search_keyword) || '%'
+    LOOP
+        RAISE NOTICE 'Film: %', movie_name;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+CALL SearchMoviesByKeyword('Fast');
+
+
+
